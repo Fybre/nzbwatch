@@ -1,3 +1,7 @@
+// Some Flutter plugins reference kotlin_version via the old Groovy ext pattern.
+// Define it here so those plugins can resolve the property.
+extra["kotlin_version"] = "2.2.20"
+
 allprojects {
     repositories {
         google()
