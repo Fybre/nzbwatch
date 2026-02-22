@@ -94,6 +94,11 @@ build_ios() {
         "$FLUTTER_DIR/ios/Frameworks/libnzbwatch_core_device.a"
     cp "$RUST_DIR/target/universal-sim/release/libnzbwatch_core.a" \
         "$FLUTTER_DIR/ios/Frameworks/libnzbwatch_core_sim.a"
+    # Plain name is used by the Podfile linker flag (-lnzbwatch_core).
+    # For release/device builds this is the device slice; swap with
+    # libnzbwatch_core_sim.a when building for simulator locally.
+    cp "$RUST_DIR/target/aarch64-apple-ios/release/libnzbwatch_core.a" \
+        "$FLUTTER_DIR/ios/Frameworks/libnzbwatch_core.a"
     
     echo "iOS build complete!"
 }

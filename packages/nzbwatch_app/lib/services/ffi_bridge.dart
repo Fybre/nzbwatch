@@ -62,6 +62,14 @@ class FfiBridge {
   }
 
   DynamicLibrary _load() {
+    // On iOS the static library is linked into the main executable at compile
+    // time, so symbols are looked up in the current process rather than opened
+    // as a separate file.
+    if (Platform.isIOS) {
+      libPath = 'process';
+      return DynamicLibrary.process();
+    }
+
     final paths = <String>[];
     final name = Platform.isMacOS ? 'libnzbwatch_core.dylib' : (Platform.isWindows ? 'nzbwatch_core.dll' : 'libnzbwatch_core.so');
     
