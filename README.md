@@ -1,5 +1,7 @@
 # NZBWatch
 
+100% Vibe coded by Gemini 🚀
+
 A cross-platform NZB downloader and media streamer for Windows, Linux, macOS, Android, and iOS.
 
 ## Features
