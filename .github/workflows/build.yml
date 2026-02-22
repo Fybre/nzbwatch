@@ -150,7 +150,6 @@ jobs:
 
   build-android:
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
@@ -198,7 +197,6 @@ jobs:
 
   build-ios:
     runs-on: macos-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 

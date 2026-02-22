@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::process::Command;
+#[cfg(not(any(target_os = "android", target_os = "ios")))]
 use unrar::Archive;
 use crate::{Result, NzbError};
 
@@ -95,6 +96,7 @@ impl PostProcessor {
         }
     }
 
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
     fn extract_rars(dir: &Path) -> Result<()> {
         let entries = fs::read_dir(dir).map_err(|e| NzbError::Io(e))?;
         let mut rar_files: Vec<PathBuf> = entries
@@ -110,18 +112,18 @@ impl PostProcessor {
 
         if let Some(first_rar) = rar_files.first() {
             println!("[PostProcessor] Extracting archive set: {:?}", first_rar);
-            
+
             let archive = Archive::new(first_rar.to_str().unwrap())
                 .open_for_processing()
                 .map_err(|e| NzbError::Parse(format!("Rar open failed: {}", e)))?;
-            
+
             let mut open_archive = archive;
             while let Some(header) = open_archive.read_header()
-                .map_err(|e| NzbError::Parse(format!("Rar header read failed: {}", e)))? 
+                .map_err(|e| NzbError::Parse(format!("Rar header read failed: {}", e)))?
             {
                 let is_file = header.entry().is_file();
                 let filename = header.entry().filename.clone();
-                
+
                 if is_file {
                     let out_path = dir.join(&filename);
                     if let Some(parent) = out_path.parent() {
@@ -136,6 +138,11 @@ impl PostProcessor {
             }
             println!("[PostProcessor] Extraction complete.");
         }
+        Ok(())
+    }
+
+    #[cfg(any(target_os = "android", target_os = "ios"))]
+    fn extract_rars(_dir: &Path) -> Result<()> {
         Ok(())
     }
 
