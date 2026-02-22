@@ -156,7 +156,7 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android, i686-linux-android
+          targets: aarch64-linux-android, x86_64-linux-android
 
       - name: Install cargo-ndk
         run: cargo install cargo-ndk
@@ -178,22 +178,10 @@ jobs:
         with:
           channel: 'stable'
 
-      - name: Create libpthread stub for Android 32-bit targets
-        run: |
-          # On Android, pthread functions live in libc — there is no separate
-          # libpthread.so. However some Rust crates (ring, tokio) emit
-          # -lpthread on all Unix targets. We create an empty stub archive so
-          # the linker requirement is satisfied without introducing any symbols.
-          mkdir -p /tmp/android-stubs
-          echo 'void __ndk_pthread_stub(void){}' | gcc -x c -o /tmp/pthread_stub.o -c -
-          ar rcs /tmp/android-stubs/libpthread.a /tmp/pthread_stub.o
-
       - name: Build Rust Core (Android)
         run: ./scripts/build_rust.sh android
         env:
           ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
-          CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RUSTFLAGS: "-C link-arg=-L/tmp/android-stubs"
-          CARGO_TARGET_I686_LINUX_ANDROID_RUSTFLAGS: "-C link-arg=-L/tmp/android-stubs"
 
       - name: Build Flutter (Android)
         run: |

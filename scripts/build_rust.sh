@@ -22,22 +22,17 @@ build_android() {
         cargo install cargo-ndk
     fi
     
-    # Build for all Android targets
-    # Use API level 26+ (lutimes is available from API 26 in Android's bionic libc)
-    cargo ndk -t armeabi-v7a -t arm64-v8a -t x86 -t x86_64 --platform 26 build --release
-    
+    # Build for 64-bit Android targets (arm64 and x86_64)
+    # 32-bit targets (armeabi-v7a, x86) omitted: unrar_sys has build issues
+    # on 32-bit Android due to missing libpthread stubs in the NDK
+    cargo ndk -t arm64-v8a -t x86_64 --platform 26 build --release
+
     # Copy to Flutter project
-    mkdir -p "$FLUTTER_DIR/android/app/src/main/jniLibs/armeabi-v7a"
     mkdir -p "$FLUTTER_DIR/android/app/src/main/jniLibs/arm64-v8a"
-    mkdir -p "$FLUTTER_DIR/android/app/src/main/jniLibs/x86"
     mkdir -p "$FLUTTER_DIR/android/app/src/main/jniLibs/x86_64"
-    
-    cp "$RUST_DIR/target/armv7-linux-androideabi/release/libnzbwatch_core.so" \
-        "$FLUTTER_DIR/android/app/src/main/jniLibs/armeabi-v7a/" 2>/dev/null || true
+
     cp "$RUST_DIR/target/aarch64-linux-android/release/libnzbwatch_core.so" \
         "$FLUTTER_DIR/android/app/src/main/jniLibs/arm64-v8a/" 2>/dev/null || true
-    cp "$RUST_DIR/target/i686-linux-android/release/libnzbwatch_core.so" \
-        "$FLUTTER_DIR/android/app/src/main/jniLibs/x86/" 2>/dev/null || true
     cp "$RUST_DIR/target/x86_64-linux-android/release/libnzbwatch_core.so" \
         "$FLUTTER_DIR/android/app/src/main/jniLibs/x86_64/" 2>/dev/null || true
     
