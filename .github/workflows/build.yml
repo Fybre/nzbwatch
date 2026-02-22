@@ -1,0 +1,184 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-apple-darwin, aarch64-apple-darwin
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+
+      - name: Install macOS dependencies
+        run: brew install create-dmg
+
+      - name: Build Rust Core (macOS)
+        run: ./scripts/build_rust.sh macos
+
+      - name: Build Flutter (macOS)
+        run: |
+          cd packages/nzbwatch_app
+          flutter pub get
+          flutter build macos --release
+
+      - name: Import Apple Certificate
+        if: env.APPLE_CERTIFICATE_P12 != ''
+        env:
+          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
+          APPLE_CERTIFICATE_PASS: ${{ secrets.APPLE_CERTIFICATE_PASS }}
+          APPLE_KEYCHAIN_PASS: ${{ secrets.APPLE_KEYCHAIN_PASS }}
+        run: |
+          echo $APPLE_CERTIFICATE_P12 | base64 --decode > certificate.p12
+          security create-keychain -p "$APPLE_KEYCHAIN_PASS" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$APPLE_KEYCHAIN_PASS" build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASS" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_KEYCHAIN_PASS" build.keychain
+
+      - name: Code Sign and Create DMG
+        run: |
+          APP_PATH="packages/nzbwatch_app/build/macos/Build/Products/Release/nzbwatch.app"
+          
+          # Sign the app if certificate is available
+          if [ "${{ secrets.APPLE_CERTIFICATE_P12 }}" != "" ]; then
+            codesign --force --options runtime --deep --sign "${{ secrets.APPLE_CERTIFICATE_NAME }}" "$APP_PATH"
+          fi
+          
+          # Create DMG
+          mkdir -p dist
+          create-dmg \
+            --volname "NZBWatch Installer" \
+            --window-pos 200 120 \
+            --window-size 800 400 \
+            --icon-size 100 \
+            --icon "nzbwatch.app" 200 190 \
+            --hide-extension "nzbwatch.app" \
+            --app-drop-link 600 185 \
+            "dist/NZBWatch-macOS.dmg" \
+            "$APP_PATH"
+
+      - name: Upload macOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nzbwatch-macos
+          path: dist/NZBWatch-macOS.dmg
+
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-pc-windows-msvc
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+
+      - name: Build Rust Core (Windows)
+        run: .\scripts\build_rust.sh windows
+        shell: bash
+
+      - name: Build Flutter (Windows)
+        run: |
+          cd packages/nzbwatch_app
+          flutter pub get
+          flutter build windows --release
+
+      - name: Upload Windows Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nzbwatch-windows
+          path: packages/nzbwatch_app/build/windows/runner/Release/
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android, armv7-linux-androideabi, x86_64-linux-android
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: Setup Android NDK
+        uses: nndixon/install-android-ndk@v1
+        with:
+          ndk-version: r25c
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+
+      - name: Build Rust Core (Android)
+        run: ./scripts/build_rust.sh android
+        env:
+          ANDROID_NDK_HOME: ${{ steps.setup-ndk.outputs.ndk-path }}
+
+      - name: Build Flutter (Android)
+        run: |
+          cd packages/nzbwatch_app
+          flutter pub get
+          flutter build apk --release
+
+      - name: Upload Android Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nzbwatch-android
+          path: packages/nzbwatch_app/build/app/outputs/flutter-apk/app-release.apk
+
+  build-ios:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios, aarch64-apple-ios-sim
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.19.0'
+          channel: 'stable'
+
+      - name: Build Rust Core (iOS)
+        run: ./scripts/build_rust.sh ios
+
+      - name: Build Flutter (iOS)
+        run: |
+          cd packages/nzbwatch_app
+          flutter pub get
+          flutter build ios --release --no-codesign
+
+      - name: Upload iOS Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nzbwatch-ios
+          path: packages/nzbwatch_app/build/ios/iphoneos/Runner.app

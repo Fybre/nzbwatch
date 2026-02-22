@@ -80,7 +80,26 @@ build_ios() {
 # Function to build for Windows
 build_windows() {
     echo "Building for Windows..."
-    echo "Windows build requires cross-compilation setup. Skipping for now."
+    
+    # Check if we are on Windows or cross-compiling
+    if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "cygwin" || "$OSTYPE" == "win32" ]]; then
+        cargo build --release
+    else
+        # Assume cross-compilation from Linux/macOS
+        # Requires: rustup target add x86_64-pc-windows-msvc
+        # Note: This is complex on GitHub Actions without a Windows runner
+        # so we will typically run this on the Windows runner itself.
+        cargo build --release --target x86_64-pc-windows-msvc
+    fi
+    
+    # Copy to Flutter project
+    mkdir -p "$FLUTTER_DIR/windows/runner/resources"
+    cp "$RUST_DIR/target/release/nzbwatch_core.dll" \
+        "$FLUTTER_DIR/windows/runner/" 2>/dev/null || \
+    cp "$RUST_DIR/target/x86_64-pc-windows-msvc/release/nzbwatch_core.dll" \
+        "$FLUTTER_DIR/windows/runner/" 2>/dev/null || true
+    
+    echo "Windows build complete!"
 }
 
 # Parse arguments

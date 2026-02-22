@@ -254,6 +254,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     }
   }
 
+  void _streamDownload(DownloadItem download, String url) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => PlayerScreen(
+          downloadId: download.id,
+          filePath: url, // Player handles URL as file path if prefixed correctly
+          title: download.filename,
+        ),
+      ),
+    );
+  }
+
   Future<bool> _showHealthWarningDialog(NzbFile nzb, double health) async {
     final isRar = nzb.containsRars;
     final message = isRar
@@ -385,6 +398,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                                 onReveal: () => ref
                                     .read(downloadServiceProvider)
                                     .revealInFinder(d.id),
+                                onStream: (url) => _streamDownload(d, url),
                               )),
                         ],
 

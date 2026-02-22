@@ -5,7 +5,9 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::fs::{File, OpenOptions};
 use tokio::io::{AsyncSeekExt, AsyncWriteExt};
-use tokio::sync::{Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, Notify};
+
+pub mod server;
 
 /// Manages the storage of downloaded segments to disk across multiple files
 pub struct SequentialStorage {
@@ -20,6 +22,8 @@ pub struct SequentialStorage {
     // Status tracking
     current_file: Arc<RwLock<Option<String>>>,
     speed_bps: Arc<AtomicU64>,
+    // Notify when a segment is written
+    segment_written: Arc<Notify>,
 }
 
 impl SequentialStorage {
@@ -35,7 +39,18 @@ impl SequentialStorage {
             failed_segments: Arc::new(RwLock::new(HashMap::new())),
             current_file: Arc::new(RwLock::new(None)),
             speed_bps: Arc::new(AtomicU64::new(0)),
+            segment_written: Arc::new(Notify::new()),
         })
+    }
+
+    pub fn get_config(&self) -> &DownloadConfig {
+        &self.config
+    }
+
+    pub async fn get_file_size(&self, filename: &str) -> Option<u64> {
+        self.config.nzb.files.iter()
+            .find(|f| f.filename == filename)
+            .map(|f| f.size)
     }
 
     pub async fn mark_segment_failed(&self, filename: &str, segment_number: u32) {
@@ -94,6 +109,72 @@ impl SequentialStorage {
             .write()
             .await
             .insert((filename.to_string(), segment_number), true);
+
+        // Notify any pending readers
+        self.segment_written.notify_waiters();
+
+        Ok(())
+    }
+
+    /// Read a range of bytes from a file.
+    /// This does NOT wait for the data to be available.
+    pub async fn read_range(&self, filename: &str, offset: u64, length: usize) -> Result<Vec<u8>> {
+        let file_mutex = self.get_file(filename).await?;
+        let mut file = file_mutex.lock().await;
+        
+        file.seek(std::io::SeekFrom::Start(offset)).await?;
+        let mut buffer = vec![0u8; length];
+        
+        use tokio::io::AsyncReadExt;
+        let n = file.read_exact(&mut buffer).await?;
+        if n < length {
+            buffer.truncate(n);
+        }
+        
+        Ok(buffer)
+    }
+
+    /// Wait until a range of bytes is available in the given file.
+    /// It checks which segments cover this range and waits for them to be completed.
+    pub async fn wait_for_range(&self, filename: &str, offset: u64, length: u64) -> Result<()> {
+        let file_entry = self.config.nzb.files.iter()
+            .find(|f| f.filename == filename)
+            .ok_or_else(|| crate::NzbError::Parse(format!("File not found: {}", filename)))?;
+
+        // Find segments that overlap with the requested [offset, offset + length)
+        let requested_end = offset + length;
+        let mut required_segments: Vec<u32> = file_entry.segments.iter()
+            .filter(|s| {
+                // Approximate segment byte range
+                // Note: This assumes segments are contiguous and we know their sizes.
+                // In Usenet, we know the size of each segment from the NZB.
+                // We need to calculate the cumulative offset.
+                let mut seg_offset = 0u64;
+                for i in 0..s.number.saturating_sub(1) {
+                    seg_offset += file_entry.segments[i as usize].size;
+                }
+                let seg_end = seg_offset + s.size;
+                
+                // Check for overlap between [offset, requested_end) and [seg_offset, seg_end)
+                offset < seg_end && seg_offset < requested_end
+            })
+            .map(|s| s.number)
+            .collect();
+
+        while !required_segments.is_empty() {
+            // Check which are done
+            {
+                let completed = self.completed_segments.read().await;
+                required_segments.retain(|&seg_num| {
+                    !completed.contains_key(&(filename.to_string(), seg_num))
+                });
+            }
+
+            if !required_segments.is_empty() {
+                // Wait for a new segment to be written
+                self.segment_written.notified().await;
+            }
+        }
 
         Ok(())
     }
@@ -196,6 +277,7 @@ impl SequentialStorage {
             },
             current_file,
             health,
+            streaming_url: None,
             downloaded_ranges,
             error_message: None,
         }

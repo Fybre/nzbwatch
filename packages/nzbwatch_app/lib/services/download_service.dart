@@ -332,6 +332,7 @@ class DownloadService {
         int? eta;
         String? currentFile;
         double health = 100.0;
+        String? streamingUrl;
         List<(double, double)> ranges = [];
 
         final progressFile = File('$outputDir/${download.id}.progress.json');
@@ -347,6 +348,7 @@ class DownloadService {
             eta = (progress['eta_seconds'] as num?)?.toInt();
             currentFile = progress['current_file'] as String?;
             health = (progress['health'] as num?)?.toDouble() ?? 100.0;
+            streamingUrl = progress['streaming_url'] as String?;
             
             final jsonRanges = progress['downloaded_ranges'] as List?;
             if (jsonRanges != null) {
@@ -414,6 +416,7 @@ class DownloadService {
             etaSeconds: eta,
             currentFile: currentFile,
             health: health,
+            streamingUrl: streamingUrl,
             downloadedRanges: ranges,
             percentComplete: download.totalBytes > 0
                 ? (downloaded / download.totalBytes * 100)
@@ -669,6 +672,7 @@ class DownloadService {
     required int totalSegments,
     required int completedSegments,
     required double health,
+    String? streamingUrl,
     List<(double, double)> downloadedRanges = const [],
   }) {
     final controller = _progressControllers[downloadId];
@@ -681,6 +685,7 @@ class DownloadService {
         totalSegments: totalSegments,
         completedSegments: completedSegments,
         health: health,
+        streamingUrl: streamingUrl,
         downloadedRanges: downloadedRanges,
         percentComplete: totalBytes > 0
             ? (downloadedBytes / totalBytes * 100)

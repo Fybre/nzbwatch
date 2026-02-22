@@ -14,10 +14,17 @@ lazy_static::lazy_static! {
     static ref API_INSTANCE: Mutex<Option<Arc<NzbWatchApi>>> = Mutex::new(None);
 }
 
+use crate::cache::server::StreamServer;
+
+pub struct ActiveDownload {
+    pub storage: Arc<crate::cache::Storage>,
+    pub server: Option<Arc<Mutex<StreamServer>>>,
+}
+
 pub struct NzbWatchApi {
-    runtime: tokio::runtime::Runtime,
+    pub runtime: tokio::runtime::Runtime,
     // Track active downloads for cancellation and deletion
-    active_downloads: Arc<dashmap::DashMap<String, Arc<crate::cache::Storage>>>,
+    pub active_downloads: Arc<dashmap::DashMap<String, ActiveDownload>>,
 }
 
 impl NzbWatchApi {
@@ -245,9 +252,13 @@ pub extern "C" fn core_delete_download(api_ptr: *mut NzbWatchApi, download_id_pt
     let download_id = unsafe { CStr::from_ptr(download_id_ptr).to_str().unwrap_or("") };
     
     // If it's active, remove it and get the storage instance to delete files
-    if let Some((_, storage)) = api.active_downloads.remove(download_id) {
+    if let Some((_, active)) = api.active_downloads.remove(download_id) {
+        if let Some(server) = active.server {
+            let mut server = server.lock().unwrap();
+            server.stop();
+        }
         let _ = api.runtime.block_on(async {
-            storage.delete_all_files().await
+            active.storage.delete_all_files().await
         });
         return 1;
     }
@@ -281,7 +292,12 @@ pub extern "C" fn core_cancel_download(api_ptr: *mut NzbWatchApi, download_id_pt
     }
     let api = unsafe { &*api_ptr };
     let download_id = unsafe { CStr::from_ptr(download_id_ptr).to_str().unwrap_or("") };
-    api.active_downloads.remove(download_id);
+    if let Some((_, active)) = api.active_downloads.remove(download_id) {
+        if let Some(server) = active.server {
+            let mut server = server.lock().unwrap();
+            server.stop();
+        }
+    }
 }
 
 /// Test server connection
@@ -331,7 +347,7 @@ struct DownloadConfig {
 
 async fn run_real_download(
     config: DownloadConfig, 
-    active_downloads: Arc<dashmap::DashMap<String, Arc<crate::cache::Storage>>>
+    active_downloads: Arc<dashmap::DashMap<String, ActiveDownload>>
 ) -> crate::Result<()> {
     use crate::cache::Storage;
     use crate::nntp::NntpClient;
@@ -348,7 +364,32 @@ async fn run_real_download(
     };
     
     let storage = Arc::new(Storage::new(core_config.clone()).await?);
-    active_downloads.insert(download_id.clone(), storage.clone());
+    
+    // Setup streaming server if it looks like a video
+    let mut server = None;
+    let mut streaming_url = None;
+    
+    // Find the largest video file
+    let video_file = core_config.nzb.files.iter()
+        .filter(|f| is_video_file(&f.filename))
+        .max_by_key(|f| f.size);
+        
+    if let Some(f) = video_file {
+        let mut s = StreamServer::new(storage.clone());
+        match s.start().await {
+            Ok(_) => {
+                streaming_url = Some(s.get_url(&f.filename));
+                server = Some(Arc::new(Mutex::new(s)));
+                println!("[DownloadManager] Streaming started: {:?}", streaming_url);
+            }
+            Err(e) => eprintln!("[DownloadManager] Failed to start stream server: {}", e),
+        }
+    }
+
+    active_downloads.insert(download_id.clone(), ActiveDownload {
+        storage: storage.clone(),
+        server: server.clone(),
+    });
     
     // Helper to write status file
     let write_status = |status: &str, error: Option<&str>| {
@@ -452,9 +493,12 @@ async fn run_real_download(
                                                                         }
                                 
                                                                         // Update progress file
-                                                                        let progress = storage.get_progress().await;                                let progress_path = core_config.output_dir.join(format!("{}.progress.json", download_id));
-                                let progress_json = serde_json::to_string(&progress).unwrap_or_default();
-                                let _ = std::fs::write(&progress_path, progress_json);
+                                                                        let mut progress = storage.get_progress().await;
+                                                                        progress.streaming_url = streaming_url.clone();
+                                                                        
+                                                                        let progress_path = core_config.output_dir.join(format!("{}.progress.json", download_id));
+                                                                        let progress_json = serde_json::to_string(&progress).unwrap_or_default();
+                                                                        let _ = std::fs::write(&progress_path, progress_json);
 
                                 success = true;
                                 current_client_idx = idx; // Stick with this client for next segment
@@ -481,7 +525,8 @@ async fn run_real_download(
                 storage.mark_segment_failed(&file_entry.filename, segment.number).await;
                 
                 // Update progress file even on failure
-                let progress = storage.get_progress().await;
+                let mut progress = storage.get_progress().await;
+                progress.streaming_url = streaming_url.clone();
                 let progress_path = core_config.output_dir.join(format!("{}.progress.json", download_id));
                 let progress_json = serde_json::to_string(&progress).unwrap_or_default();
                 let _ = std::fs::write(&progress_path, progress_json);
@@ -492,6 +537,11 @@ async fn run_real_download(
     // Close all connections when finished
     for conn in active_conns.into_iter().flatten() {
         let _ = conn.quit().await;
+    }
+    
+    // Stop server if finished
+    if let Some(s) = server {
+        s.lock().unwrap().stop();
     }
     
     // POST PROCESSING
@@ -532,4 +582,9 @@ async fn run_real_download(
     });
 
     Ok(())
+}
+
+fn is_video_file(filename: &str) -> bool {
+    let ext = filename.split('.').last().unwrap_or("").to_lowercase();
+    matches!(ext.as_str(), "mkv" | "mp4" | "avi" | "mov" | "wmv" | "m4v" | "webm" | "flv" | "ts")
 }

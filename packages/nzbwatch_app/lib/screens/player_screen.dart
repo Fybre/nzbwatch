@@ -58,13 +58,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _initializePlayer() async {
     try {
-      final file = File(widget.filePath);
-      if (!await file.exists()) {
-        setState(() {
-          _error = 'Video file not found. It may have been moved or deleted.';
-          _isLoading = false;
-        });
-        return;
+      final isStream = widget.filePath.startsWith('http');
+      
+      if (!isStream) {
+        final file = File(widget.filePath);
+        if (!await file.exists()) {
+          setState(() {
+            _error = 'Video file not found. It may have been moved or deleted.';
+            _isLoading = false;
+          });
+          return;
+        }
       }
 
       final player = Player();
@@ -84,9 +88,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       final download = await _downloadService.getDownload(widget.downloadId);
       final lastPosition = Duration(milliseconds: download?.lastPosition ?? 0);
 
-      await player.open(Media('file://${widget.filePath}'));
+      if (isStream) {
+        await player.open(Media(widget.filePath));
+      } else {
+        await player.open(Media('file://${widget.filePath}'));
+      }
       
-      if (lastPosition > Duration.zero) {
+      if (lastPosition > Duration.zero && !isStream) {
         Future.delayed(const Duration(milliseconds: 500), () {
           if (mounted) player.seek(lastPosition);
         });
@@ -94,9 +102,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       
       player.setSubtitleTrack(SubtitleTrack.no());
 
-      _positionTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
-        _savePosition();
-      });
+      if (!isStream) {
+        _positionTimer = Timer.periodic(const Duration(seconds: 5), (timer) {
+          _savePosition();
+        });
+      }
 
       setState(() {
         _player = player;
@@ -124,7 +134,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
   Future<void> _savePosition() async {
     final player = _player;
-    if (player != null && !_isLoading && _error == null) {
+    final isStream = widget.filePath.startsWith('http');
+    if (player != null && !_isLoading && _error == null && !isStream) {
       try {
         final position = player.state.position;
         final duration = player.state.duration;
@@ -441,11 +452,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
           
           // Custom Buffer Bar Overlay
           if (_downloadedRanges.isNotEmpty && _downloadedRanges.length < 2) // Only show if not fully done
-            IgnorePointer(
-              child: Positioned(
-                bottom: 78,
-                left: 32,
-                right: 32,
+            Positioned(
+              bottom: 78,
+              left: 32,
+              right: 32,
+              child: IgnorePointer(
                 child: Container(
                   height: 2,
                   decoration: BoxDecoration(

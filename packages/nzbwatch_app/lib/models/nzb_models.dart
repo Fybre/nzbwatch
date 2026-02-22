@@ -188,6 +188,7 @@ class DownloadProgress extends Equatable {
   final int? etaSeconds;
   final String? currentFile;
   final double health;
+  final String? streamingUrl;
   final List<(double, double)> downloadedRanges;
   final double percentComplete;
   final String? errorMessage;
@@ -203,6 +204,7 @@ class DownloadProgress extends Equatable {
     this.etaSeconds,
     this.currentFile,
     this.health = 100.0,
+    this.streamingUrl,
     this.downloadedRanges = const [],
     this.percentComplete = 0.0,
     this.errorMessage,

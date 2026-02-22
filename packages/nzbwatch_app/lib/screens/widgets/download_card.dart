@@ -12,6 +12,7 @@ class DownloadCard extends ConsumerWidget {
   final VoidCallback? onResume;
   final VoidCallback? onRetry;
   final VoidCallback? onReveal;
+  final Function(String)? onStream;
 
   const DownloadCard({
     super.key,
@@ -22,6 +23,7 @@ class DownloadCard extends ConsumerWidget {
     this.onResume,
     this.onRetry,
     this.onReveal,
+    this.onStream,
   });
 
   @override
@@ -95,6 +97,20 @@ class DownloadCard extends ConsumerWidget {
                       ],
                     ),
                   ),
+
+                  if (isDownloading && progress.streamingUrl != null && onStream != null)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8.0),
+                      child: TextButton.icon(
+                        onPressed: () => onStream!(progress.streamingUrl!),
+                        icon: const Icon(Icons.play_circle_outline, size: 18),
+                        label: const Text('Stream Now'),
+                        style: TextButton.styleFrom(
+                          foregroundColor: const Color(0xFF6366F1),
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                        ),
+                      ),
+                    ),
 
                   // Action menu
                   _buildActionMenu(context, progress.state),
