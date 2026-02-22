@@ -19,7 +19,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.22.0'
           channel: 'stable'
 
       - name: Install macOS dependencies
@@ -89,11 +89,11 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.22.0'
           channel: 'stable'
 
       - name: Build Rust Core (Windows)
-        run: .\scripts\build_rust.sh windows
+        run: ./scripts/build_rust.sh windows
         shell: bash
 
       - name: Build Flutter (Windows)
@@ -125,14 +125,15 @@ jobs:
           java-version: '17'
 
       - name: Setup Android NDK
-        uses: nndixon/install-android-ndk@v1
+        uses: nwtgck/setup-android-ndk@v1
+        id: setup-ndk
         with:
           ndk-version: r25c
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.22.0'
           channel: 'stable'
 
       - name: Build Rust Core (Android)
@@ -165,7 +166,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
+          flutter-version: '3.22.0'
           channel: 'stable'
 
       - name: Build Rust Core (iOS)
