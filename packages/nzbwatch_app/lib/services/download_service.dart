@@ -8,19 +8,20 @@ import 'package:uuid/uuid.dart';
 import 'package:path/path.dart' as p;
 
 import '../models/nzb_models.dart' as models;
+import '../providers/settings_provider.dart';
 import 'database.dart';
 import 'ffi_bridge.dart';
 
 /// Service for managing downloads
 class DownloadService {
   final AppDatabase _db;
+  final Ref _ref;
   final _uuid = const Uuid();
-  
+
   final Map<String, StreamController<models.DownloadProgress>> _progressControllers = {};
   final Map<String, Timer> _progressTimers = {};
-  
-  DownloadService(this._db);
-  
+
+  DownloadService(this._db, this._ref);
   /// Import and parse an NZB file
   Future<models.NzbFile?> importNzbFile(String filePath) async {
     final file = File(filePath);
@@ -331,6 +332,7 @@ class DownloadService {
         int? eta;
         String? currentFile;
         double health = 100.0;
+        List<(double, double)> ranges = [];
 
         final progressFile = File('$outputDir/${download.id}.progress.json');
         if (await progressFile.exists()) {
@@ -345,6 +347,14 @@ class DownloadService {
             eta = (progress['eta_seconds'] as num?)?.toInt();
             currentFile = progress['current_file'] as String?;
             health = (progress['health'] as num?)?.toDouble() ?? 100.0;
+            
+            final jsonRanges = progress['downloaded_ranges'] as List?;
+            if (jsonRanges != null) {
+              ranges = jsonRanges.map((r) {
+                final list = r as List;
+                return ( (list[0] as num).toDouble(), (list[1] as num).toDouble() );
+              }).toList();
+            }
           } catch (e) {
             print('[DownloadService] Error reading progress file: $e');
           }
@@ -404,6 +414,7 @@ class DownloadService {
             etaSeconds: eta,
             currentFile: currentFile,
             health: health,
+            downloadedRanges: ranges,
             percentComplete: download.totalBytes > 0
                 ? (downloaded / download.totalBytes * 100)
                 : 0,
@@ -441,6 +452,14 @@ class DownloadService {
       id: Value(downloadId),
       status: Value(DownloadStatus.paused),
     ));
+  }
+
+  /// Get real-time progress stream for a download
+  Stream<models.DownloadProgress> getProgressStream(String downloadId) {
+    if (!_progressControllers.containsKey(downloadId)) {
+      _progressControllers[downloadId] = StreamController<models.DownloadProgress>.broadcast();
+    }
+    return _progressControllers[downloadId]!.stream;
   }
   
   /// Delete a download
@@ -583,11 +602,31 @@ class DownloadService {
     final row = await _db.getDownload(downloadId);
     
     // Update output path if we have a specific video file from extraction
-    // DO NOT update filename here, as it's the stable display name.
     final finalPath = videoPath ?? row?.outputPath ?? '';
+    
+    // Determine the filename (display name)
+    String finalFilename = row?.filename ?? 'Unknown';
+    
+    final settings = _ref.read(settingsProvider);
+    if (settings.renameToMovieName && videoPath != null) {
+      // Extract filename without extension
+      String movieName = p.basenameWithoutExtension(videoPath);
+      
+      // Sanitise: remove full stops (replace with space)
+      movieName = movieName.replaceAll('.', ' ');
+      
+      // Clean up extra spaces
+      movieName = movieName.replaceAll(RegExp(r'\s+'), ' ').trim();
+      
+      if (movieName.isNotEmpty) {
+        finalFilename = movieName;
+        print('[DownloadService] Renamed library entry to: $finalFilename');
+      }
+    }
 
     await _db.updateDownload(DownloadsCompanion(
       id: Value(downloadId),
+      filename: Value(finalFilename),
       status: Value(DownloadStatus.complete),
       completedAt: Value(DateTime.now()),
       downloadedBytes: Value(row?.totalBytes ?? 0),
@@ -600,7 +639,8 @@ class DownloadService {
         downloadedBytes: row?.totalBytes ?? 0,
         totalSegments: row?.totalSegments ?? 0,
         completedSegments: row?.totalSegments ?? 0,
-        health: row?.health ?? 100.0);
+        health: row?.health ?? 100.0,
+        downloadedRanges: [(0.0, 100.0)]);
   }
 
   /// Mark download as error
@@ -629,6 +669,7 @@ class DownloadService {
     required int totalSegments,
     required int completedSegments,
     required double health,
+    List<(double, double)> downloadedRanges = const [],
   }) {
     final controller = _progressControllers[downloadId];
     if (controller != null && !controller.isClosed) {
@@ -640,6 +681,7 @@ class DownloadService {
         totalSegments: totalSegments,
         completedSegments: completedSegments,
         health: health,
+        downloadedRanges: downloadedRanges,
         percentComplete: totalBytes > 0
             ? (downloadedBytes / totalBytes * 100)
             : 0,
@@ -733,7 +775,7 @@ class DownloadService {
 /// Download service provider
 final downloadServiceProvider = Provider<DownloadService>((ref) {
   final db = ref.watch(databaseProvider);
-  return DownloadService(db);
+  return DownloadService(db, ref);
 });
 
 /// Provider for all downloads — backed by Drift's reactive watch() query so the

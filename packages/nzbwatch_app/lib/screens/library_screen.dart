@@ -9,6 +9,7 @@ import '../services/download_service.dart';
 import '../services/ffi_bridge.dart';
 import '../services/server_service.dart';
 import 'player_screen.dart';
+import 'search_screen.dart';
 import 'settings_screen.dart';
 import 'widgets/download_card.dart';
 import 'widgets/empty_state.dart';
@@ -329,6 +330,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     ],
                   ),
                   actions: [
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const SearchScreen()),
+                      ),
+                    ),
                     IconButton(
                       icon: const Icon(Icons.settings_outlined),
                       onPressed: _openSettings,

@@ -188,6 +188,7 @@ class DownloadProgress extends Equatable {
   final int? etaSeconds;
   final String? currentFile;
   final double health;
+  final List<(double, double)> downloadedRanges;
   final double percentComplete;
   final String? errorMessage;
 
@@ -202,6 +203,7 @@ class DownloadProgress extends Equatable {
     this.etaSeconds,
     this.currentFile,
     this.health = 100.0,
+    this.downloadedRanges = const [],
     this.percentComplete = 0.0,
     this.errorMessage,
   });
@@ -367,4 +369,75 @@ class DownloadItem extends Equatable {
         completedAt,
         groups,
       ];
+}
+
+/// Newznab Indexer configuration
+class NewznabIndexer extends Equatable {
+  final String id;
+  final String name;
+  final String host;
+  final String apiKey;
+  final bool enabled;
+
+  const NewznabIndexer({
+    required this.id,
+    required this.name,
+    required this.host,
+    required this.apiKey,
+    this.enabled = true,
+  });
+
+  NewznabIndexer copyWith({
+    String? id,
+    String? name,
+    String? host,
+    String? apiKey,
+    bool? enabled,
+  }) {
+    return NewznabIndexer(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      host: host ?? this.host,
+      apiKey: apiKey ?? this.apiKey,
+      enabled: enabled ?? this.enabled,
+    );
+  }
+
+  @override
+  List<Object?> get props => [id, name, host, apiKey, enabled];
+}
+
+/// Newznab search result
+class SearchResult extends Equatable {
+  final String title;
+  final String guid;
+  final String? link;
+  final DateTime? pubDate;
+  final int size;
+  final String indexerName;
+  final String? category;
+  final String? poster;
+  final String? group;
+
+  const SearchResult({
+    required this.title,
+    required this.guid,
+    this.link,
+    this.pubDate,
+    required this.size,
+    required this.indexerName,
+    this.category,
+    this.poster,
+    this.group,
+  });
+
+  String get formattedSize {
+    if (size < 1024) return '${size}B';
+    if (size < 1024 * 1024) return '${(size / 1024).toStringAsFixed(1)}KB';
+    if (size < 1024 * 1024 * 1024) return '${(size / (1024 * 1024)).toStringAsFixed(1)}MB';
+    return '${(size / (1024 * 1024 * 1024)).toStringAsFixed(2)}GB';
+  }
+
+  @override
+  List<Object?> get props => [title, guid, link, pubDate, size, indexerName];
 }

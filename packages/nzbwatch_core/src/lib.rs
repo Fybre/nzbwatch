@@ -117,6 +117,8 @@ pub struct DownloadProgress {
     pub eta_seconds: Option<u64>,
     pub current_file: Option<String>,
     pub health: f64,
+    /// List of (start_percent, end_percent) for downloaded parts
+    pub downloaded_ranges: Vec<(f64, f64)>,
     pub error_message: Option<String>,
 }
 

@@ -2324,6 +2324,350 @@ class DownloadGroupsCompanion extends UpdateCompanion<DownloadGroup> {
   }
 }
 
+class $NewznabIndexersTable extends NewznabIndexers
+    with TableInfo<$NewznabIndexersTable, NewznabIndexer> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $NewznabIndexersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+      'id', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+      'name', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _hostMeta = const VerificationMeta('host');
+  @override
+  late final GeneratedColumn<String> host = GeneratedColumn<String>(
+      'host', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _apiKeyMeta = const VerificationMeta('apiKey');
+  @override
+  late final GeneratedColumn<String> apiKey = GeneratedColumn<String>(
+      'api_key', aliasedName, false,
+      type: DriftSqlType.string, requiredDuringInsert: true);
+  static const VerificationMeta _enabledMeta =
+      const VerificationMeta('enabled');
+  @override
+  late final GeneratedColumn<bool> enabled = GeneratedColumn<bool>(
+      'enabled', aliasedName, false,
+      type: DriftSqlType.bool,
+      requiredDuringInsert: false,
+      defaultConstraints:
+          GeneratedColumn.constraintIsAlways('CHECK ("enabled" IN (0, 1))'),
+      defaultValue: const Constant(true));
+  static const VerificationMeta _createdAtMeta =
+      const VerificationMeta('createdAt');
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+      'created_at', aliasedName, false,
+      type: DriftSqlType.dateTime, requiredDuringInsert: true);
+  @override
+  List<GeneratedColumn> get $columns =>
+      [id, name, host, apiKey, enabled, createdAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'newznab_indexers';
+  @override
+  VerificationContext validateIntegrity(Insertable<NewznabIndexer> instance,
+      {bool isInserting = false}) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+          _nameMeta, name.isAcceptableOrUnknown(data['name']!, _nameMeta));
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('host')) {
+      context.handle(
+          _hostMeta, host.isAcceptableOrUnknown(data['host']!, _hostMeta));
+    } else if (isInserting) {
+      context.missing(_hostMeta);
+    }
+    if (data.containsKey('api_key')) {
+      context.handle(_apiKeyMeta,
+          apiKey.isAcceptableOrUnknown(data['api_key']!, _apiKeyMeta));
+    } else if (isInserting) {
+      context.missing(_apiKeyMeta);
+    }
+    if (data.containsKey('enabled')) {
+      context.handle(_enabledMeta,
+          enabled.isAcceptableOrUnknown(data['enabled']!, _enabledMeta));
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(_createdAtMeta,
+          createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  NewznabIndexer map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return NewznabIndexer(
+      id: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}id'])!,
+      name: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}name'])!,
+      host: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}host'])!,
+      apiKey: attachedDatabase.typeMapping
+          .read(DriftSqlType.string, data['${effectivePrefix}api_key'])!,
+      enabled: attachedDatabase.typeMapping
+          .read(DriftSqlType.bool, data['${effectivePrefix}enabled'])!,
+      createdAt: attachedDatabase.typeMapping
+          .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
+    );
+  }
+
+  @override
+  $NewznabIndexersTable createAlias(String alias) {
+    return $NewznabIndexersTable(attachedDatabase, alias);
+  }
+}
+
+class NewznabIndexer extends DataClass implements Insertable<NewznabIndexer> {
+  final String id;
+  final String name;
+  final String host;
+  final String apiKey;
+  final bool enabled;
+  final DateTime createdAt;
+  const NewznabIndexer(
+      {required this.id,
+      required this.name,
+      required this.host,
+      required this.apiKey,
+      required this.enabled,
+      required this.createdAt});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    map['host'] = Variable<String>(host);
+    map['api_key'] = Variable<String>(apiKey);
+    map['enabled'] = Variable<bool>(enabled);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  NewznabIndexersCompanion toCompanion(bool nullToAbsent) {
+    return NewznabIndexersCompanion(
+      id: Value(id),
+      name: Value(name),
+      host: Value(host),
+      apiKey: Value(apiKey),
+      enabled: Value(enabled),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory NewznabIndexer.fromJson(Map<String, dynamic> json,
+      {ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return NewznabIndexer(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      host: serializer.fromJson<String>(json['host']),
+      apiKey: serializer.fromJson<String>(json['apiKey']),
+      enabled: serializer.fromJson<bool>(json['enabled']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'host': serializer.toJson<String>(host),
+      'apiKey': serializer.toJson<String>(apiKey),
+      'enabled': serializer.toJson<bool>(enabled),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  NewznabIndexer copyWith(
+          {String? id,
+          String? name,
+          String? host,
+          String? apiKey,
+          bool? enabled,
+          DateTime? createdAt}) =>
+      NewznabIndexer(
+        id: id ?? this.id,
+        name: name ?? this.name,
+        host: host ?? this.host,
+        apiKey: apiKey ?? this.apiKey,
+        enabled: enabled ?? this.enabled,
+        createdAt: createdAt ?? this.createdAt,
+      );
+  NewznabIndexer copyWithCompanion(NewznabIndexersCompanion data) {
+    return NewznabIndexer(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      host: data.host.present ? data.host.value : this.host,
+      apiKey: data.apiKey.present ? data.apiKey.value : this.apiKey,
+      enabled: data.enabled.present ? data.enabled.value : this.enabled,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NewznabIndexer(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('host: $host, ')
+          ..write('apiKey: $apiKey, ')
+          ..write('enabled: $enabled, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, host, apiKey, enabled, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is NewznabIndexer &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.host == this.host &&
+          other.apiKey == this.apiKey &&
+          other.enabled == this.enabled &&
+          other.createdAt == this.createdAt);
+}
+
+class NewznabIndexersCompanion extends UpdateCompanion<NewznabIndexer> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> host;
+  final Value<String> apiKey;
+  final Value<bool> enabled;
+  final Value<DateTime> createdAt;
+  final Value<int> rowid;
+  const NewznabIndexersCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.host = const Value.absent(),
+    this.apiKey = const Value.absent(),
+    this.enabled = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  NewznabIndexersCompanion.insert({
+    required String id,
+    required String name,
+    required String host,
+    required String apiKey,
+    this.enabled = const Value.absent(),
+    required DateTime createdAt,
+    this.rowid = const Value.absent(),
+  })  : id = Value(id),
+        name = Value(name),
+        host = Value(host),
+        apiKey = Value(apiKey),
+        createdAt = Value(createdAt);
+  static Insertable<NewznabIndexer> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? host,
+    Expression<String>? apiKey,
+    Expression<bool>? enabled,
+    Expression<DateTime>? createdAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (host != null) 'host': host,
+      if (apiKey != null) 'api_key': apiKey,
+      if (enabled != null) 'enabled': enabled,
+      if (createdAt != null) 'created_at': createdAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  NewznabIndexersCompanion copyWith(
+      {Value<String>? id,
+      Value<String>? name,
+      Value<String>? host,
+      Value<String>? apiKey,
+      Value<bool>? enabled,
+      Value<DateTime>? createdAt,
+      Value<int>? rowid}) {
+    return NewznabIndexersCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      host: host ?? this.host,
+      apiKey: apiKey ?? this.apiKey,
+      enabled: enabled ?? this.enabled,
+      createdAt: createdAt ?? this.createdAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (host.present) {
+      map['host'] = Variable<String>(host.value);
+    }
+    if (apiKey.present) {
+      map['api_key'] = Variable<String>(apiKey.value);
+    }
+    if (enabled.present) {
+      map['enabled'] = Variable<bool>(enabled.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('NewznabIndexersCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('host: $host, ')
+          ..write('apiKey: $apiKey, ')
+          ..write('enabled: $enabled, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -2332,12 +2676,20 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $DownloadFilesTable downloadFiles = $DownloadFilesTable(this);
   late final $SegmentsTable segments = $SegmentsTable(this);
   late final $DownloadGroupsTable downloadGroups = $DownloadGroupsTable(this);
+  late final $NewznabIndexersTable newznabIndexers =
+      $NewznabIndexersTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
-  List<DatabaseSchemaEntity> get allSchemaEntities =>
-      [serverConfigs, downloads, downloadFiles, segments, downloadGroups];
+  List<DatabaseSchemaEntity> get allSchemaEntities => [
+        serverConfigs,
+        downloads,
+        downloadFiles,
+        segments,
+        downloadGroups,
+        newznabIndexers
+      ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules(
         [
@@ -4201,6 +4553,195 @@ typedef $$DownloadGroupsTableProcessedTableManager = ProcessedTableManager<
     (DownloadGroup, $$DownloadGroupsTableReferences),
     DownloadGroup,
     PrefetchHooks Function({bool downloadId})>;
+typedef $$NewznabIndexersTableCreateCompanionBuilder = NewznabIndexersCompanion
+    Function({
+  required String id,
+  required String name,
+  required String host,
+  required String apiKey,
+  Value<bool> enabled,
+  required DateTime createdAt,
+  Value<int> rowid,
+});
+typedef $$NewznabIndexersTableUpdateCompanionBuilder = NewznabIndexersCompanion
+    Function({
+  Value<String> id,
+  Value<String> name,
+  Value<String> host,
+  Value<String> apiKey,
+  Value<bool> enabled,
+  Value<DateTime> createdAt,
+  Value<int> rowid,
+});
+
+class $$NewznabIndexersTableFilterComposer
+    extends Composer<_$AppDatabase, $NewznabIndexersTable> {
+  $$NewznabIndexersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get host => $composableBuilder(
+      column: $table.host, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<String> get apiKey => $composableBuilder(
+      column: $table.apiKey, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnFilters(column));
+}
+
+class $$NewznabIndexersTableOrderingComposer
+    extends Composer<_$AppDatabase, $NewznabIndexersTable> {
+  $$NewznabIndexersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+      column: $table.id, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get name => $composableBuilder(
+      column: $table.name, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get host => $composableBuilder(
+      column: $table.host, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<String> get apiKey => $composableBuilder(
+      column: $table.apiKey, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<bool> get enabled => $composableBuilder(
+      column: $table.enabled, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+      column: $table.createdAt, builder: (column) => ColumnOrderings(column));
+}
+
+class $$NewznabIndexersTableAnnotationComposer
+    extends Composer<_$AppDatabase, $NewznabIndexersTable> {
+  $$NewznabIndexersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get host =>
+      $composableBuilder(column: $table.host, builder: (column) => column);
+
+  GeneratedColumn<String> get apiKey =>
+      $composableBuilder(column: $table.apiKey, builder: (column) => column);
+
+  GeneratedColumn<bool> get enabled =>
+      $composableBuilder(column: $table.enabled, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$NewznabIndexersTableTableManager extends RootTableManager<
+    _$AppDatabase,
+    $NewznabIndexersTable,
+    NewznabIndexer,
+    $$NewznabIndexersTableFilterComposer,
+    $$NewznabIndexersTableOrderingComposer,
+    $$NewznabIndexersTableAnnotationComposer,
+    $$NewznabIndexersTableCreateCompanionBuilder,
+    $$NewznabIndexersTableUpdateCompanionBuilder,
+    (
+      NewznabIndexer,
+      BaseReferences<_$AppDatabase, $NewznabIndexersTable, NewznabIndexer>
+    ),
+    NewznabIndexer,
+    PrefetchHooks Function()> {
+  $$NewznabIndexersTableTableManager(
+      _$AppDatabase db, $NewznabIndexersTable table)
+      : super(TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$NewznabIndexersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$NewznabIndexersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$NewznabIndexersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback: ({
+            Value<String> id = const Value.absent(),
+            Value<String> name = const Value.absent(),
+            Value<String> host = const Value.absent(),
+            Value<String> apiKey = const Value.absent(),
+            Value<bool> enabled = const Value.absent(),
+            Value<DateTime> createdAt = const Value.absent(),
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NewznabIndexersCompanion(
+            id: id,
+            name: name,
+            host: host,
+            apiKey: apiKey,
+            enabled: enabled,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          createCompanionCallback: ({
+            required String id,
+            required String name,
+            required String host,
+            required String apiKey,
+            Value<bool> enabled = const Value.absent(),
+            required DateTime createdAt,
+            Value<int> rowid = const Value.absent(),
+          }) =>
+              NewznabIndexersCompanion.insert(
+            id: id,
+            name: name,
+            host: host,
+            apiKey: apiKey,
+            enabled: enabled,
+            createdAt: createdAt,
+            rowid: rowid,
+          ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ));
+}
+
+typedef $$NewznabIndexersTableProcessedTableManager = ProcessedTableManager<
+    _$AppDatabase,
+    $NewznabIndexersTable,
+    NewznabIndexer,
+    $$NewznabIndexersTableFilterComposer,
+    $$NewznabIndexersTableOrderingComposer,
+    $$NewznabIndexersTableAnnotationComposer,
+    $$NewznabIndexersTableCreateCompanionBuilder,
+    $$NewznabIndexersTableUpdateCompanionBuilder,
+    (
+      NewznabIndexer,
+      BaseReferences<_$AppDatabase, $NewznabIndexersTable, NewznabIndexer>
+    ),
+    NewznabIndexer,
+    PrefetchHooks Function()>;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -4215,4 +4756,6 @@ class $AppDatabaseManager {
       $$SegmentsTableTableManager(_db, _db.segments);
   $$DownloadGroupsTableTableManager get downloadGroups =>
       $$DownloadGroupsTableTableManager(_db, _db.downloadGroups);
+  $$NewznabIndexersTableTableManager get newznabIndexers =>
+      $$NewznabIndexersTableTableManager(_db, _db.newznabIndexers);
 }

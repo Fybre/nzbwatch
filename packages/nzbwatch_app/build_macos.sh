@@ -35,10 +35,16 @@ echo ""
 echo "Step 4: Copying library to app bundle..."
 APP_BUNDLE="$FLUTTER_DIR/build/macos/Build/Products/Debug/nzbwatch.app"
 FRAMEWORKS_DIR="$APP_BUNDLE/Contents/Frameworks"
+MACOS_DIR="$APP_BUNDLE/Contents/MacOS"
 
 mkdir -p "$FRAMEWORKS_DIR"
 cp "$LIB_PATH" "$FRAMEWORKS_DIR/"
-cp "$LIB_PATH" "$APP_BUNDLE/Contents/MacOS/"
+cp "$LIB_PATH" "$MACOS_DIR/"
+
+# Sign the library
+echo "Signing Rust library..."
+codesign --force --sign - "$FRAMEWORKS_DIR/libnzbwatch_core.dylib"
+codesign --force --sign - "$MACOS_DIR/libnzbwatch_core.dylib"
 
 # Step 4.1: Copy bundled par2 binary if it exists
 PAR2_SRC="$PROJECT_ROOT/bin/macos/par2"
@@ -46,7 +52,10 @@ if [ -f "$PAR2_SRC" ]; then
     echo "Copying par2 binary..."
     cp "$PAR2_SRC" "$APP_BUNDLE/Contents/MacOS/"
     chmod +x "$APP_BUNDLE/Contents/MacOS/par2"
-    echo "✓ par2 binary bundled"
+    # Ad-hoc sign the par2 binary
+    echo "Signing par2 binary..."
+    codesign --force --sign - "$APP_BUNDLE/Contents/MacOS/par2"
+    echo "✓ par2 binary bundled and signed"
 fi
 
 echo "Library copied to:"

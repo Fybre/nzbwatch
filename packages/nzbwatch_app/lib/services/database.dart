@@ -91,12 +91,25 @@ class DownloadGroups extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-@DriftDatabase(tables: [ServerConfigs, Downloads, DownloadFiles, Segments, DownloadGroups])
+// Newznab Indexers
+class NewznabIndexers extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get host => text()();
+  TextColumn get apiKey => text()();
+  BoolColumn get enabled => boolean().withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime()();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DriftDatabase(tables: [ServerConfigs, Downloads, DownloadFiles, Segments, DownloadGroups, NewznabIndexers])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -112,6 +125,8 @@ class AppDatabase extends _$AppDatabase {
             await m.addColumn(downloads, downloads.lastPosition);
           } else if (from < 5) {
             await m.addColumn(downloads, downloads.health);
+          } else if (from < 6) {
+            await m.createTable(newznabIndexers);
           }
         },
         beforeOpen: (details) async {
@@ -148,6 +163,24 @@ class AppDatabase extends _$AppDatabase {
 
   Future<int> deleteServer(String id) {
     return (delete(serverConfigs)..where((s) => s.id.equals(id))).go();
+  }
+
+  // Indexer CRUD
+  Future<List<NewznabIndexer>> getAllIndexers() => select(newznabIndexers).get();
+
+  Future<int> insertIndexer(NewznabIndexersCompanion indexer) => into(newznabIndexers).insert(indexer);
+
+  Future<bool> updateIndexer(NewznabIndexersCompanion indexer) {
+    return (update(newznabIndexers)..where((i) => i.id.equals(indexer.id.value))).write(indexer).then((rows) => rows > 0);
+  }
+
+  Future<int> deleteIndexer(String id) {
+    return (delete(newznabIndexers)..where((i) => i.id.equals(id))).go();
+  }
+
+  Stream<List<NewznabIndexer>> watchAllIndexers() {
+    return (select(newznabIndexers)..orderBy([(i) => OrderingTerm(expression: i.createdAt)]))
+        .watch();
   }
 
   // Download CRUD

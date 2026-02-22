@@ -120,12 +120,51 @@ impl SequentialStorage {
 
     /// Get current download progress
     pub async fn get_progress(&self) -> DownloadProgress {
-        let completed = self.completed_segments.read().await.len() as u32;
+        let completed_map = self.completed_segments.read().await;
+        let completed = completed_map.len() as u32;
         let failed = self.failed_segments.read().await.len() as u32;
-        let total_segments: u32 = self.config.nzb.files.iter()
-            .map(|f| f.segments.len() as u32)
-            .sum();
+        
+        // Flatten all segments from all files into a single ordered list for the buffer bar
+        let all_segments: Vec<(&String, u32)> = self.config.nzb.files.iter()
+            .flat_map(|f| f.segments.iter().map(move |s| (&f.filename, s.number)))
+            .collect();
             
+        let total_segments = all_segments.len() as u32;
+        
+        // Calculate ranges (simple bucketed approach for the UI)
+        let mut downloaded_ranges = Vec::new();
+        if total_segments > 0 {
+            let bucket_count = 100;
+            let segments_per_bucket = (total_segments as f64 / bucket_count as f64).max(1.0);
+            
+            let mut current_start = -1.0;
+            for i in 0..bucket_count {
+                let start_idx = (i as f64 * segments_per_bucket) as usize;
+                let end_idx = (((i + 1) as f64 * segments_per_bucket) as usize).min(all_segments.len());
+                
+                if start_idx >= all_segments.len() { break; }
+                
+                // A bucket is "done" if all segments in it are completed
+                let bucket_done = all_segments[start_idx..end_idx].iter()
+                    .all(|(fname, num)| completed_map.contains_key(&((*fname).clone(), *num)));
+                
+                let bucket_percent = i as f64;
+                if bucket_done {
+                    if current_start < 0.0 {
+                        current_start = bucket_percent;
+                    }
+                } else {
+                    if current_start >= 0.0 {
+                        downloaded_ranges.push((current_start, bucket_percent));
+                        current_start = -1.0;
+                    }
+                }
+            }
+            if current_start >= 0.0 {
+                downloaded_ranges.push((current_start, 100.0));
+            }
+        }
+
         let downloaded = self.downloaded_bytes.load(Ordering::Relaxed);
         let speed = self.speed_bps.load(Ordering::Relaxed);
         let current_file = self.current_file.read().await.clone();
@@ -157,6 +196,7 @@ impl SequentialStorage {
             },
             current_file,
             health,
+            downloaded_ranges,
             error_message: None,
         }
     }

@@ -35,12 +35,25 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   double _aspectRatio = 16 / 9;
   StreamSubscription? _widthSubscription;
   StreamSubscription? _heightSubscription;
+  StreamSubscription? _progressSubscription;
+  List<(double, double)> _downloadedRanges = [];
 
   @override
   void initState() {
     super.initState();
     _downloadService = ref.read(downloadServiceProvider);
     _initializePlayer();
+    _subscribeToProgress();
+  }
+
+  void _subscribeToProgress() {
+    _progressSubscription = _downloadService.getProgressStream(widget.downloadId).listen((progress) {
+      if (mounted) {
+        setState(() {
+          _downloadedRanges = progress.downloadedRanges;
+        });
+      }
+    });
   }
 
   Future<void> _initializePlayer() async {
@@ -273,6 +286,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   void dispose() {
     _widthSubscription?.cancel();
     _heightSubscription?.cancel();
+    _progressSubscription?.cancel();
     _positionTimer?.cancel();
     _player?.dispose();
     super.dispose();
@@ -343,7 +357,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     final controller = _controller;
     if (controller == null) return _buildErrorState();
 
-    final topButtonBar = [
+    final List<Widget> topButtonBar = [
       MaterialCustomButton(
         onPressed: () => Navigator.pop(context),
         icon: const Icon(Icons.arrow_back, color: Colors.white),
@@ -371,28 +385,88 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
       ),
     ];
 
+    final List<Widget> bottomButtonBar = [
+      const MaterialPlayOrPauseButton(),
+      MaterialCustomButton(
+        onPressed: () {
+          final position = _player?.state.position ?? Duration.zero;
+          _player?.seek(position - const Duration(seconds: 10));
+        },
+        icon: const Icon(Icons.replay_10, color: Colors.white),
+      ),
+      MaterialCustomButton(
+        onPressed: () {
+          final position = _player?.state.position ?? Duration.zero;
+          _player?.seek(position + const Duration(seconds: 10));
+        },
+        icon: const Icon(Icons.forward_10, color: Colors.white),
+      ),
+      const MaterialDesktopVolumeButton(),
+      const MaterialPositionIndicator(),
+      const Spacer(),
+      const MaterialFullscreenButton(),
+    ];
+
     return MaterialVideoControlsTheme(
       normal: MaterialVideoControlsThemeData(
-        bottomButtonBarMargin:
-            const EdgeInsets.only(bottom: 40, left: 16, right: 16),
+        bottomButtonBar: bottomButtonBar,
+        bottomButtonBarMargin: const EdgeInsets.only(bottom: 40, left: 16, right: 16),
         seekBarMargin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
         topButtonBar: topButtonBar,
       ),
       fullscreen: MaterialVideoControlsThemeData(
-        bottomButtonBarMargin:
-            const EdgeInsets.only(bottom: 40, left: 16, right: 16),
+        bottomButtonBar: bottomButtonBar,
+        bottomButtonBarMargin: const EdgeInsets.only(bottom: 40, left: 16, right: 16),
         seekBarMargin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
         topButtonBar: topButtonBar,
       ),
-      child: Center(
-        child: AspectRatio(
-          aspectRatio: _aspectRatio,
-          child: Video(
-            controller: controller,
-            fit: BoxFit.contain,
-            controls: MaterialVideoControls,
+      child: Stack(
+        children: [
+          Center(
+            child: AspectRatio(
+              aspectRatio: _aspectRatio,
+              child: GestureDetector(
+                onTap: () {
+                  // Ensure player area takes focus when clicked
+                  FocusScope.of(context).requestFocus(FocusNode());
+                },
+                child: Video(
+                  controller: controller,
+                  fit: BoxFit.contain,
+                  controls: MaterialVideoControls,
+                ),
+              ),
+            ),
           ),
-        ),
+          
+          // Custom Buffer Bar Overlay
+          if (_downloadedRanges.isNotEmpty && _downloadedRanges.length < 2) // Only show if not fully done
+            IgnorePointer(
+              child: Positioned(
+                bottom: 78,
+                left: 32,
+                right: 32,
+                child: Container(
+                  height: 2,
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                  child: Stack(
+                    children: _downloadedRanges.map((range) {
+                      return Positioned(
+                        left: MediaQuery.of(context).size.width * (range.$1 / 100.0),
+                        width: MediaQuery.of(context).size.width * ((range.$2 - range.$1) / 100.0),
+                        top: 0,
+                        bottom: 0,
+                        child: Container(color: Colors.white30),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
