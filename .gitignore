@@ -1,0 +1,15 @@
+# Flutter
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+build/
+
+# Rust
+target/
+**/*.rs.bk
+
+# OS
+.DS_Store
+.history/
