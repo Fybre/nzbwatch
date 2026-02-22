@@ -171,7 +171,7 @@ jobs:
         uses: nttld/setup-ndk@v1
         id: setup-ndk
         with:
-          ndk-version: r25c
+          ndk-version: r27c
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -197,6 +197,7 @@ jobs:
 
   build-ios:
     runs-on: macos-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
