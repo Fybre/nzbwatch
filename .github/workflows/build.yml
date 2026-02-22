@@ -185,9 +185,9 @@ jobs:
           # libpthread is a stub in Android (pthread is in libc); add NDK sysroot
           # lib paths so the linker can find the stubs for 32-bit targets
           CARGO_TARGET_ARMV7_LINUX_ANDROIDEABI_RUSTFLAGS: >-
-            -C link-search=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi
+            -C link-arg=-L${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/arm-linux-androideabi
           CARGO_TARGET_I686_LINUX_ANDROID_RUSTFLAGS: >-
-            -C link-search=${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android
+            -C link-arg=-L${{ steps.setup-ndk.outputs.ndk-path }}/toolchains/llvm/prebuilt/linux-x86_64/sysroot/usr/lib/i686-linux-android
 
       - name: Build Flutter (Android)
         run: |
