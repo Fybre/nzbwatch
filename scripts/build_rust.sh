@@ -23,7 +23,8 @@ build_android() {
     fi
     
     # Build for all Android targets
-    cargo ndk -t armeabi-v7a -t arm64-v8a -t x86 -t x86_64 build --release
+    # Use API level 26+ (lutimes is available from API 26 in Android's bionic libc)
+    cargo ndk -t armeabi-v7a -t arm64-v8a -t x86 -t x86_64 --platform 26 build --release
     
     # Copy to Flutter project
     mkdir -p "$FLUTTER_DIR/android/app/src/main/jniLibs/armeabi-v7a"

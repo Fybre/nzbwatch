@@ -46,12 +46,13 @@ post_install do |installer|
       config.build_settings['MACOSX_DEPLOYMENT_TARGET'] = '11.0'
       
       # Add library search path for our Rust library
+      # PROJECT_DIR in pod targets points to macos/Pods/, so we go up one level
       config.build_settings['LIBRARY_SEARCH_PATHS'] ||= ['$(inherited)']
-      config.build_settings['LIBRARY_SEARCH_PATHS'] << '$(PROJECT_DIR)/Frameworks'
-      
+      config.build_settings['LIBRARY_SEARCH_PATHS'] << '$(PROJECT_DIR)/../Frameworks'
+
       # Link the dylib
       config.build_settings['OTHER_LDFLAGS'] ||= ['$(inherited)']
-      config.build_settings['OTHER_LDFLAGS'] << '-L$(PROJECT_DIR)/Frameworks'
+      config.build_settings['OTHER_LDFLAGS'] << '-L$(PROJECT_DIR)/../Frameworks'
       config.build_settings['OTHER_LDFLAGS'] << '-lnzbwatch_core'
     end
   end
