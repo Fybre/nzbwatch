@@ -40,6 +40,15 @@ mkdir -p "$FRAMEWORKS_DIR"
 cp "$LIB_PATH" "$FRAMEWORKS_DIR/"
 cp "$LIB_PATH" "$APP_BUNDLE/Contents/MacOS/"
 
+# Step 4.1: Copy bundled par2 binary if it exists
+PAR2_SRC="$PROJECT_ROOT/bin/macos/par2"
+if [ -f "$PAR2_SRC" ]; then
+    echo "Copying par2 binary..."
+    cp "$PAR2_SRC" "$APP_BUNDLE/Contents/MacOS/"
+    chmod +x "$APP_BUNDLE/Contents/MacOS/par2"
+    echo "✓ par2 binary bundled"
+fi
+
 echo "Library copied to:"
 echo "  - $FRAMEWORKS_DIR/libnzbwatch_core.dylib"
 echo "  - $APP_BUNDLE/Contents/MacOS/libnzbwatch_core.dylib"

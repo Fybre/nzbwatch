@@ -171,15 +171,16 @@ Each platform requires the Rust library to be built and placed in the appropriat
 
 ### MVP (Current)
 - ✅ Download NZB files to completion
-- ✅ Play downloaded files
+- ✅ Play downloaded files (Subtitles, Audio, Fullscreen)
 - ✅ Server configuration
-- ✅ Basic UI
+- ✅ Health tracking and pre-download availability check
+- ✅ Automatic RAR extraction
+- ✅ Post-processing failure detection and retry
 
 ### Future
 - 🔄 **Streaming** - Watch while downloading
 - 🔄 **Seek during download** - Jump to any position
-- 🔄 **PAR repair** - Automatic repair of broken downloads
-- 🔄 **RAR extraction** - Automatic decompression
+- 🔄 **PAR repair** - Integration with par2cmdline
 - 🔄 **Queue management** - Pause/resume/priority
 - 🔄 **Speed limiting** - Bandwidth control
 
@@ -207,6 +208,8 @@ MIT License - See LICENSE file
 ## Acknowledgments
 
 - [media_kit](https://github.com/media-kit/media-kit) - Cross-platform video playback
+- [par2cmdline](https://github.com/Parchive/par2cmdline) - Standard Usenet repair tool (Bundled)
+- [unrar](https://github.com/rarw/unrar) - RAR extraction engine
 - [Drift](https://drift.simonbinder.eu/) - Dart SQL database
 - [Riverpod](https://riverpod.dev/) - State management
 - [Tokio](https://tokio.rs/) - Rust async runtime

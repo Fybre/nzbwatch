@@ -1,15 +1,14 @@
 use std::path::{Path, PathBuf};
 use std::fs;
+use std::process::Command;
 use unrar::Archive;
 use crate::{Result, NzbError};
 
 pub struct PostProcessor;
 
 impl PostProcessor {
-    /// Analyzes the downloaded files, extracts RARs if present, and returns the path to the main video file.
     pub async fn process(download_dir: &Path) -> Result<PathBuf> {
-        // 1. Check and repair files with PAR2 if needed
-        // (Placeholder: Logic for identifying PAR2 files and calling system par2 or internal lib)
+        // 1. Check and repair files with bundled par2 if needed
         if let Err(e) = Self::repair_files(download_dir) {
             eprintln!("[PostProcessor] PAR2 Repair warning: {:?}", e);
         }
@@ -31,12 +30,69 @@ impl PostProcessor {
             .filter(|p| p.extension().map_or(false, |ext| ext.to_str().unwrap_or("").to_lowercase() == "par2"))
             .collect();
 
-        if !par2_files.is_empty() {
-            println!("[PostProcessor] Found {} PAR2 files. Automated repair is pending implementation.", par2_files.len());
-            // In a future update, we can integrate a PAR2 library or use std::process::Command 
-            // to call a system 'par2' binary if available.
+        // Find the main .par2 file (usually doesn't have .volXXX in the name)
+        let main_par2 = par2_files.iter()
+            .find(|p| !p.to_str().unwrap_or("").contains(".vol"))
+            .or_else(|| par2_files.first());
+
+        if let Some(par2_path) = main_par2 {
+            println!("[PostProcessor] Checking integrity with PAR2: {:?}", par2_path);
+            
+            // Resolve path to bundled par2 binary
+            let par2_bin = Self::get_par2_binary_path()?;
+            
+            if !par2_bin.exists() {
+                eprintln!("[PostProcessor] PAR2 binary not found at {:?}. Skipping repair.", par2_bin);
+                return Ok(());
+            }
+
+            println!("[PostProcessor] Running repair: {:?} repair {:?}", par2_bin, par2_path);
+            
+            // Run 'par2 repair [file]'
+            let status = Command::new(&par2_bin)
+                .arg("repair")
+                .arg("-q") // quiet
+                .arg("-q") // extra quiet
+                .arg(par2_path)
+                .current_dir(dir)
+                .status()
+                .map_err(|e| NzbError::Parse(format!("Failed to execute par2: {}", e)))?;
+
+            if status.success() {
+                println!("[PostProcessor] PAR2 repair/verification successful.");
+            } else {
+                eprintln!("[PostProcessor] PAR2 repair reported errors (Status: {:?}).", status.code());
+            }
         }
         Ok(())
+    }
+
+    fn get_par2_binary_path() -> Result<PathBuf> {
+        let current_exe = std::env::current_exe().unwrap_or_else(|_| PathBuf::from("."));
+        let exe_dir = current_exe.parent().unwrap_or(Path::new("."));
+        
+        #[cfg(target_os = "windows")]
+        {
+            Ok(exe_dir.join("par2.exe"))
+        }
+        
+        #[cfg(target_os = "macos")]
+        {
+            // On macOS, the dynamic library might be in Frameworks, 
+            // but we'll bundle the helper binary in MacOS folder.
+            let bin_path = exe_dir.join("par2");
+            if bin_path.exists() {
+                Ok(bin_path)
+            } else {
+                // Fallback for development/IDE runs
+                Ok(exe_dir.join("../MacOS/par2"))
+            }
+        }
+        
+        #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+        {
+            Ok(PathBuf::from("par2"))
+        }
     }
 
     fn extract_rars(dir: &Path) -> Result<()> {
@@ -53,7 +109,7 @@ impl PostProcessor {
         rar_files.sort();
 
         if let Some(first_rar) = rar_files.first() {
-            println!("[PostProcessor] Extracting archive set starting with: {:?}", first_rar);
+            println!("[PostProcessor] Extracting archive set: {:?}", first_rar);
             
             let archive = Archive::new(first_rar.to_str().unwrap())
                 .open_for_processing()

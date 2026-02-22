@@ -31,6 +31,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   String? _error;
   Timer? _positionTimer;
 
+  // Track dimensions to avoid nested StreamBuilders
+  double _aspectRatio = 16 / 9;
+  StreamSubscription? _widthSubscription;
+  StreamSubscription? _heightSubscription;
+
   @override
   void initState() {
     super.initState();
@@ -51,6 +56,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
 
       final player = Player();
       final controller = VideoController(player);
+
+      // Set initial volume to 100% to initialize audio engine
+      player.setVolume(100.0);
+
+      // Listen for dimension changes once to update aspect ratio
+      _widthSubscription = player.stream.width.listen((width) {
+        _updateAspectRatio(width, player.state.height);
+      });
+      _heightSubscription = player.stream.height.listen((height) {
+        _updateAspectRatio(player.state.width, height);
+      });
 
       final download = await _downloadService.getDownload(widget.downloadId);
       final lastPosition = Duration(milliseconds: download?.lastPosition ?? 0);
@@ -79,6 +95,17 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
         _error = 'Failed to load video: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  void _updateAspectRatio(int? width, int? height) {
+    if (width != null && height != null && height > 0) {
+      final newRatio = width / height;
+      if ((newRatio - _aspectRatio).abs() > 0.01) {
+        setState(() {
+          _aspectRatio = newRatio;
+        });
+      }
     }
   }
 
@@ -173,8 +200,79 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
     );
   }
 
+  void _showAudioSelection() {
+    final player = _player;
+    if (player == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        final tracks = player.state.tracks.audio;
+        final current = player.state.track.audio;
+
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.all(16),
+                child: Text(
+                  'Select Audio Track',
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white),
+                ),
+              ),
+              const Divider(color: Colors.white10),
+              Flexible(
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: tracks.length,
+                  itemBuilder: (context, index) {
+                    final track = tracks[index];
+                    final isSelected = current == track;
+                    final title =
+                        track.title ?? track.language ?? 'Track ${index + 1}';
+
+                    return ListTile(
+                      leading: Icon(
+                        isSelected ? Icons.check_circle : Icons.circle_outlined,
+                        color: isSelected
+                            ? const Color(0xFF6366F1)
+                            : Colors.white30,
+                      ),
+                      title: Text(
+                        title,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : Colors.white70,
+                          fontWeight:
+                              isSelected ? FontWeight.bold : FontWeight.normal,
+                        ),
+                      ),
+                      onTap: () {
+                        player.setAudioTrack(track);
+                        Navigator.pop(context);
+                      },
+                    );
+                  },
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   void dispose() {
+    _widthSubscription?.cancel();
+    _heightSubscription?.cancel();
     _positionTimer?.cancel();
     _player?.dispose();
     super.dispose();
@@ -244,67 +342,56 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen> {
   Widget _buildPlayer() {
     final controller = _controller;
     if (controller == null) return _buildErrorState();
-    
+
+    final topButtonBar = [
+      MaterialCustomButton(
+        onPressed: () => Navigator.pop(context),
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Text(
+          widget.title,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ),
+      MaterialCustomButton(
+        onPressed: _showAudioSelection,
+        icon: const Icon(Icons.audiotrack, color: Colors.white),
+      ),
+      MaterialCustomButton(
+        onPressed: _showSubtitleSelection,
+        icon: const Icon(Icons.subtitles, color: Colors.white),
+      ),
+    ];
+
     return MaterialVideoControlsTheme(
       normal: MaterialVideoControlsThemeData(
-        bottomButtonBarMargin: const EdgeInsets.only(bottom: 40, left: 16, right: 16),
+        bottomButtonBarMargin:
+            const EdgeInsets.only(bottom: 40, left: 16, right: 16),
         seekBarMargin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-        topButtonBar: [
-          MaterialCustomButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          MaterialCustomButton(
-            onPressed: _showSubtitleSelection,
-            icon: const Icon(Icons.subtitles, color: Colors.white),
-          ),
-        ],
+        topButtonBar: topButtonBar,
       ),
       fullscreen: MaterialVideoControlsThemeData(
-        bottomButtonBarMargin: const EdgeInsets.only(bottom: 40, left: 16, right: 16),
+        bottomButtonBarMargin:
+            const EdgeInsets.only(bottom: 40, left: 16, right: 16),
         seekBarMargin: const EdgeInsets.only(bottom: 80, left: 16, right: 16),
-        topButtonBar: [
-          MaterialCustomButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              widget.title,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          MaterialCustomButton(
-            onPressed: _showSubtitleSelection,
-            icon: const Icon(Icons.subtitles, color: Colors.white),
-          ),
-        ],
+        topButtonBar: topButtonBar,
       ),
       child: Center(
-        child: Video(
-          controller: controller,
-          fit: BoxFit.contain,
-          controls: MaterialVideoControls,
+        child: AspectRatio(
+          aspectRatio: _aspectRatio,
+          child: Video(
+            controller: controller,
+            fit: BoxFit.contain,
+            controls: MaterialVideoControls,
+          ),
         ),
       ),
     );
