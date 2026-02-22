@@ -74,7 +74,32 @@ build_linux() {
 # Function to build for iOS
 build_ios() {
     echo "Building for iOS..."
-    echo "iOS build requires additional setup. Skipping for now."
+    
+    # Add targets if not present
+    rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios
+    
+    # Build for iOS device
+    cargo build --release --target aarch64-apple-ios
+    
+    # Build for iOS simulator (arm64 and x86_64)
+    cargo build --release --target aarch64-apple-ios-sim
+    cargo build --release --target x86_64-apple-ios
+    
+    # Create universal library for simulator
+    mkdir -p "$RUST_DIR/target/universal-sim/release"
+    lipo -create \
+        "$RUST_DIR/target/aarch64-apple-ios-sim/release/libnzbwatch_core.a" \
+        "$RUST_DIR/target/x86_64-apple-ios/release/libnzbwatch_core.a" \
+        -output "$RUST_DIR/target/universal-sim/release/libnzbwatch_core.a"
+
+    # Copy to Flutter project (iOS typically uses static linking for Rust)
+    mkdir -p "$FLUTTER_DIR/ios/Frameworks"
+    cp "$RUST_DIR/target/aarch64-apple-ios/release/libnzbwatch_core.a" \
+        "$FLUTTER_DIR/ios/Frameworks/libnzbwatch_core_device.a"
+    cp "$RUST_DIR/target/universal-sim/release/libnzbwatch_core.a" \
+        "$FLUTTER_DIR/ios/Frameworks/libnzbwatch_core_sim.a"
+    
+    echo "iOS build complete!"
 }
 
 # Function to build for Windows
@@ -86,14 +111,11 @@ build_windows() {
         cargo build --release
     else
         # Assume cross-compilation from Linux/macOS
-        # Requires: rustup target add x86_64-pc-windows-msvc
-        # Note: This is complex on GitHub Actions without a Windows runner
-        # so we will typically run this on the Windows runner itself.
         cargo build --release --target x86_64-pc-windows-msvc
     fi
     
     # Copy to Flutter project
-    mkdir -p "$FLUTTER_DIR/windows/runner/resources"
+    mkdir -p "$FLUTTER_DIR/windows/runner/"
     cp "$RUST_DIR/target/release/nzbwatch_core.dll" \
         "$FLUTTER_DIR/windows/runner/" 2>/dev/null || \
     cp "$RUST_DIR/target/x86_64-pc-windows-msvc/release/nzbwatch_core.dll" \
