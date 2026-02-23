@@ -9,6 +9,9 @@ on:
 jobs:
   build-macos:
     runs-on: macos-latest
+    env:
+      APPLECERTIFICATEBASE64: ${{ secrets.APPLECERTIFICATEBASE64 }}
+      APPLECERTIFICATEPASSWORD: ${{ secrets.APPLECERTIFICATEPASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -80,10 +83,7 @@ jobs:
           fi
 
       - name: Import Apple Certificate
-        if: secrets.APPLECERTIFICATEBASE64 != ''
-        env:
-          APPLECERTIFICATEBASE64: ${{ secrets.APPLECERTIFICATEBASE64 }}
-          APPLECERTIFICATEPASSWORD: ${{ secrets.APPLECERTIFICATEPASSWORD }}
+        if: env.APPLECERTIFICATEBASE64 != ''
         run: |
           echo $APPLECERTIFICATEBASE64 | base64 --decode > certificate.p12
           security create-keychain -p "$APPLECERTIFICATEPASSWORD" build.keychain
@@ -93,7 +93,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLECERTIFICATEPASSWORD" build.keychain
 
       - name: Code Sign with Certificate
-        if: secrets.APPLECERTIFICATEBASE64 != ''
+        if: env.APPLECERTIFICATEBASE64 != ''
         run: |
           APP_PATH="packages/nzbwatch_app/build/macos/Build/Products/Release/nzbwatch.app"
           SIGN_IDENTITY=$(security find-identity -v -p codesigning build.keychain | awk -F\" '/"/ {print $2; exit}')
