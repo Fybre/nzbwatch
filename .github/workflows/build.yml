@@ -51,6 +51,10 @@ jobs:
           # Copy Rust Library
           cp "$LIB_PATH" "$APP_PATH/Contents/Frameworks/"
           cp "$LIB_PATH" "$APP_PATH/Contents/MacOS/"
+
+          # Make sure runtime lookup uses @rpath, not an absolute build host path
+          install_name_tool -id "@rpath/libnzbwatch_core.dylib" "$APP_PATH/Contents/Frameworks/libnzbwatch_core.dylib"
+          install_name_tool -id "@rpath/libnzbwatch_core.dylib" "$APP_PATH/Contents/MacOS/libnzbwatch_core.dylib"
           
           # Copy par2
           if [ -f "$PAR2_PATH" ]; then
