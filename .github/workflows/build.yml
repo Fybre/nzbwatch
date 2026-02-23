@@ -63,7 +63,7 @@ jobs:
           fi
           
           # Ad-hoc sign everything if no certificate
-          if [ "${{ secrets.APPLE_CERTIFICATE_P12 }}" == "" ]; then
+          if [ "${{ secrets.APPLECERTIFICATEBASE64 }}" == "" ]; then
             codesign --force --sign - "$APP_PATH/Contents/Frameworks/libnzbwatch_core.dylib"
             codesign --force --sign - "$APP_PATH/Contents/MacOS/libnzbwatch_core.dylib"
             if [ -f "$APP_PATH/Contents/MacOS/par2" ]; then
@@ -73,24 +73,30 @@ jobs:
           fi
 
       - name: Import Apple Certificate
-        if: env.APPLE_CERTIFICATE_P12 != ''
+        if: env.APPLECERTIFICATEBASE64 != ''
         env:
-          APPLE_CERTIFICATE_P12: ${{ secrets.APPLE_CERTIFICATE_P12 }}
-          APPLE_CERTIFICATE_PASS: ${{ secrets.APPLE_CERTIFICATE_PASS }}
-          APPLE_KEYCHAIN_PASS: ${{ secrets.APPLE_KEYCHAIN_PASS }}
+          APPLECERTIFICATEBASE64: ${{ secrets.APPLECERTIFICATEBASE64 }}
+          APPLECERTIFICATEPASSWORD: ${{ secrets.APPLECERTIFICATEPASSWORD }}
         run: |
-          echo $APPLE_CERTIFICATE_P12 | base64 --decode > certificate.p12
-          security create-keychain -p "$APPLE_KEYCHAIN_PASS" build.keychain
+          echo $APPLECERTIFICATEBASE64 | base64 --decode > certificate.p12
+          security create-keychain -p "$APPLECERTIFICATEPASSWORD" build.keychain
           security default-keychain -s build.keychain
-          security unlock-keychain -p "$APPLE_KEYCHAIN_PASS" build.keychain
-          security import certificate.p12 -k build.keychain -P "$APPLE_CERTIFICATE_PASS" -T /usr/bin/codesign
-          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLE_KEYCHAIN_PASS" build.keychain
+          security unlock-keychain -p "$APPLECERTIFICATEPASSWORD" build.keychain
+          security import certificate.p12 -k build.keychain -P "$APPLECERTIFICATEPASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLECERTIFICATEPASSWORD" build.keychain
 
       - name: Code Sign with Certificate
-        if: env.APPLE_CERTIFICATE_P12 != ''
+        if: env.APPLECERTIFICATEBASE64 != ''
         run: |
           APP_PATH="packages/nzbwatch_app/build/macos/Build/Products/Release/nzbwatch.app"
-          codesign --force --options runtime --deep --sign "${{ secrets.APPLE_CERTIFICATE_NAME }}" "$APP_PATH"
+          SIGN_IDENTITY=$(security find-identity -v -p codesigning build.keychain | awk -F\" '/"/ {print $2; exit}')
+          if [ -z "$SIGN_IDENTITY" ]; then
+            echo "No signing identity found in build.keychain"
+            security find-identity -v -p codesigning build.keychain || true
+            exit 1
+          fi
+          echo "Using signing identity: $SIGN_IDENTITY"
+          codesign --force --options runtime --deep --sign "$SIGN_IDENTITY" "$APP_PATH"
 
       - name: Create DMG
         run: |
