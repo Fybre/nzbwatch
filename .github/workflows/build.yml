@@ -33,6 +33,13 @@ jobs:
       - name: Build Rust Core (macOS)
         run: ./scripts/build_rust.sh macos
 
+      - name: Normalize Rust dylib install name
+        run: |
+          install_name_tool -id "@rpath/libnzbwatch_core.dylib" \
+            "packages/nzbwatch_core/target/release/libnzbwatch_core.dylib"
+          install_name_tool -id "@rpath/libnzbwatch_core.dylib" \
+            "packages/nzbwatch_app/macos/Frameworks/libnzbwatch_core.dylib"
+
       - name: Build Flutter (macOS)
         run: |
           cd packages/nzbwatch_app
@@ -73,7 +80,7 @@ jobs:
           fi
 
       - name: Import Apple Certificate
-        if: env.APPLECERTIFICATEBASE64 != ''
+        if: secrets.APPLECERTIFICATEBASE64 != ''
         env:
           APPLECERTIFICATEBASE64: ${{ secrets.APPLECERTIFICATEBASE64 }}
           APPLECERTIFICATEPASSWORD: ${{ secrets.APPLECERTIFICATEPASSWORD }}
@@ -86,7 +93,7 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$APPLECERTIFICATEPASSWORD" build.keychain
 
       - name: Code Sign with Certificate
-        if: env.APPLECERTIFICATEBASE64 != ''
+        if: secrets.APPLECERTIFICATEBASE64 != ''
         run: |
           APP_PATH="packages/nzbwatch_app/build/macos/Build/Products/Release/nzbwatch.app"
           SIGN_IDENTITY=$(security find-identity -v -p codesigning build.keychain | awk -F\" '/"/ {print $2; exit}')
