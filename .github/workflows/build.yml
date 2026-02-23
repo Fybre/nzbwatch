@@ -22,6 +22,11 @@ jobs:
         with:
           channel: 'stable'
 
+      - name: Disable iOS for CI
+        run: |
+          flutter config --no-enable-ios
+          flutter config --list
+
       - name: Install macOS dependencies
         run: brew install create-dmg
 
@@ -209,45 +214,9 @@ jobs:
           name: nzbwatch-android
           path: dist/NZBWatch-Android.apk
 
-  build-ios:
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-apple-ios
-
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-
-      - name: Build Rust Core (iOS)
-        run: ./scripts/build_rust.sh ios
-
-      - name: Build Flutter (iOS)
-        run: |
-          cd packages/nzbwatch_app
-          flutter pub get
-          flutter build ios --release --no-codesign
-
-      - name: Package IPA
-        run: |
-          mkdir -p dist/Payload
-          cp -r packages/nzbwatch_app/build/ios/iphoneos/Runner.app dist/Payload/
-          cd dist && zip -r NZBWatch-iOS.ipa Payload
-
-      - name: Upload iOS Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: nzbwatch-ios
-          path: dist/NZBWatch-iOS.ipa
-
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [build-macos, build-windows, build-android, build-ios]
+    needs: [build-macos, build-windows, build-android]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -265,4 +234,3 @@ jobs:
             artifacts/nzbwatch-macos/NZBWatch-macOS.dmg
             artifacts/nzbwatch-windows/NZBWatch-Windows.zip
             artifacts/nzbwatch-android/NZBWatch-Android.apk
-            artifacts/nzbwatch-ios/NZBWatch-iOS.ipa
